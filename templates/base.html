@@ -3,135 +3,357 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}QAD Assistant{% endblock %}</title>
+    <title>{% block title %}StockSense{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --accent-color: #e74c3c;
-            --success-color: #27ae60;
-            --warning-color: #f39c12;
-            --light-bg: #f8f9fa;
-            --dark-bg: #343a40;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light-bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background-color: #343541;
+            overflow-x: hidden;
+            margin: 0;
         }
         
-        .navbar-brand {
-            font-weight: bold;
-            color: var(--primary-color) !important;
-        }
-        
+        /* ChatGPT-style Sidebar */
         .sidebar {
-            height: calc(100vh - 76px);
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 20px 0;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 260px;
+            background: #171717;
+            color: #ececec;
+            padding: 0;
+            z-index: 1000;
+            overflow-y: auto;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .sidebar::-webkit-scrollbar-track {
+            background: #171717;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #2f2f2f;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .sidebar-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            object-fit: contain;
+            background: white;
+            padding: 4px;
+        }
+        
+        .sidebar-brand {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ececec;
+        }
+        
+        .sidebar-content {
+            padding: 8px;
         }
         
         .sidebar a {
-            color: rgba(255, 255, 255, 0.8);
+            color: #ececec;
             text-decoration: none;
-            padding: 15px 25px;
-            display: block;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
+            padding: 12px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            transition: background 0.2s ease;
         }
         
-        .sidebar a:hover, .sidebar a.active {
-            color: white;
-            background: rgba(255, 255, 255, 0.1);
-            border-left-color: white;
+        .sidebar a:hover {
+            background: #2a2a2a;
         }
         
-        .main-content {
-            min-height: calc(100vh - 76px);
-            padding: 30px;
+        .sidebar a.active {
+            background: #343541;
         }
         
-        .card {
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-radius: 12px;
-            margin-bottom: 20px;
+        .sidebar a i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.95rem;
         }
         
-        .card-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: 12px 12px 0 0 !important;
+        .sidebar-divider {
+            margin: 12px 0;
+            border-top: 1px solid #2f2f2f;
+        }
+        
+        .sidebar-section-title {
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8e8ea0;
             font-weight: 600;
         }
         
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* Main Container */
+        .main-container {
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #808080;
+        }
+        
+        .main-container.sidebar-open {
+            margin-left: 260px;
+        }
+        
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .sidebar-overlay.active {
+            display: block;
+        }
+        
+        /* Top Navigation Bar */
+        .top-nav {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .menu-toggle {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: #374151;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+        
+        .menu-toggle:hover {
+            background: #f3f4f6;
+        }
+        
+        .page-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .nav-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            background: white;
+            color: #374151;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        
+        .nav-btn.primary {
+            background: #10a37f;
             color: white;
-            text-align: center;
-            padding: 30px;
-            border-radius: 15px;
+            border-color: #10a37f;
+        }
+        
+        .nav-btn.primary:hover {
+            background: #0e8c6f;
+            border-color: #0e8c6f;
+        }
+        
+        /* Content Area */
+        .content-wrapper {
+            flex: 1;
+            padding: 0;
+            max-width: 100%;
+            margin: 0 auto;
+            width: 100%;
+            background: #E8EAED;
+        }
+        
+        .main-content {
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #E8EAED;
+        }
+        
+        /* Cards */
+        .card {
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
             margin-bottom: 20px;
+            background: white;
         }
         
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 10px;
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            border-radius: 8px 8px 0 0 !important;
+            font-weight: 600;
+            color: #1f2937;
+            padding: 16px 20px;
         }
         
-        .btn-primary {
-            background: var(--secondary-color);
-            border-color: var(--secondary-color);
+        .card-body {
+            padding: 20px;
         }
         
-        .btn-primary:hover {
-            background: var(--primary-color);
-            border-color: var(--primary-color);
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-container.sidebar-open {
+                margin-left: 0;
+            }
+            
+            .sidebar {
+                box-shadow: 2px 0 8px rgba(0,0,0,0.3);
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .sidebar-overlay {
+                display: none !important;
+            }
         }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-cogs me-2"></i>QAD ERP Assistant
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="StockSense Logo" class="sidebar-logo" onerror="this.style.display='none'">
+            <div class="sidebar-brand">StockSense</div>
+        </div>
+        
+        <div class="sidebar-content">
+            <a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">
+                <i class="fas fa-comments"></i>
+                <span>Chat</span>
             </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/"><i class="fas fa-comments me-1"></i>Chat</a>
-                <a class="nav-link" href="/analytics"><i class="fas fa-chart-bar me-1"></i>Analytics</a>
-                <a class="nav-link" href="/visual_chat"><i class="fas fa-chart-pie me-1"></i>Visual Chat</a>
+            <a href="/visual_chat" class="{% if request.endpoint == 'visual_chat' %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i>
+                <span>Visual Intelligence</span>
+            </a>
+            <a href="/analytics" class="{% if request.endpoint == 'analytics' %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i>
+                <span>Analytics</span>
+            </a>
+            
+            <div class="sidebar-divider"></div>
+            
+            <div class="sidebar-section-title">Actions</div>
+            
+            <a href="#" onclick="clearChat(); return false;">
+                <i class="fas fa-trash"></i>
+                <span>Clear Chat</span>
+            </a>
+            <a href="#" onclick="exportData(); return false;">
+                <i class="fas fa-download"></i>
+                <span>Export Data</span>
+            </a>
+            
+            <div class="sidebar-divider"></div>
+            
+            <a href="#" onclick="showSettings(); return false;">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="main-container" id="mainContainer">
+        <!-- Top Navigation -->
+        <div class="top-nav">
+            <div class="nav-left">
+                <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="page-title">{% block page_title %}StockSense{% endblock %}</div>
+            </div>
+            <div class="nav-right">
+                {% block nav_actions %}{% endblock %}
             </div>
         </div>
-    </nav>
-    
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-2 sidebar">
-                <div class="sidebar-content">
-                    <a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">
-                        <i class="fas fa-comments me-2"></i>Chat Assistant
-                    </a>
-                    <a href="/analytics" class="{% if request.endpoint == 'analytics' %}active{% endif %}">
-                        <i class="fas fa-chart-bar me-2"></i>Analytics
-                    </a>
-                    <hr class="my-3" style="border-color: rgba(255,255,255,0.3);">
-                    <div class="px-3 py-2">
-                        <small class="text-white-50">Quick Actions</small>
-                    </div>
-                    <a href="#" onclick="clearChat()">
-                        <i class="fas fa-trash me-2"></i>Clear Chat
-                    </a>
-                    <a href="#" onclick="exportData()">
-                        <i class="fas fa-download me-2"></i>Export Data
-                    </a>
-                </div>
-            </div>
-            <div class="col-md-10 main-content">
+        
+        <!-- Content Wrapper -->
+        <div class="content-wrapper">
+            <div class="main-content">
                 {% block content %}{% endblock %}
             </div>
         </div>
@@ -139,10 +361,49 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Sidebar toggle function
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContainer = document.getElementById('mainContainer');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.toggle('open');
+            mainContainer.classList.toggle('sidebar-open');
+            overlay.classList.toggle('active');
+        }
+        
+        // Auto-open sidebar on desktop
+        window.addEventListener('load', function() {
+            if (window.innerWidth > 768) {
+                const sidebar = document.getElementById('sidebar');
+                const mainContainer = document.getElementById('mainContainer');
+                sidebar.classList.add('open');
+                mainContainer.classList.add('sidebar-open');
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContainer = document.getElementById('mainContainer');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (window.innerWidth > 768) {
+                sidebar.classList.add('open');
+                mainContainer.classList.add('sidebar-open');
+                overlay.classList.remove('active');
+            } else {
+                // On mobile, keep current state
+            }
+        });
+        
+        function showSettings() {
+            alert('Settings coming soon!');
+        }
+        
         async function clearChat() {
             if (confirm('Are you sure you want to clear the chat history?')) {
                 try {
-                    // Clear chat in database first
                     const response = await fetch('/api/chat/clear', {
                         method: 'POST',
                         headers: {
@@ -154,17 +415,15 @@
                         throw new Error('Failed to clear chat history');
                     }
 
-                    // Clear messages from UI
                     const chatMessages = document.getElementById('chatMessages');
                     if (chatMessages) {
                         const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
                         
-                        // Clear all messages and reset to welcome message
                         messagesWrapper.innerHTML = `
                             <div class="message bot">
                                 <div class="message-content">
-                                    <div>Hello! I'm your QAD ERP assistant. I can help you with:</div>
-                                    <ul class="mt-2 mb-0">
+                                    <div>Hello! I'm StockSense, your intelligent ERP assistant. I can help you with:</div>
+                                    <ul style="margin: 12px 0; padding-left: 20px;">
                                         <li>Inventory queries and low stock alerts</li>
                                         <li>Purchase requisition creation</li>
                                         <li>Database reports and analytics</li>
@@ -176,11 +435,11 @@
                             </div>
                         `;
 
-                        // Clear and reset chat history
-                        chatHistory = [];
-                        localStorage.removeItem('chatHistory');
+                        if (typeof chatHistory !== 'undefined') {
+                            chatHistory = [];
+                            localStorage.removeItem('chatHistory');
+                        }
                         
-                        // Ensure input is enabled and focused
                         const userInput = document.getElementById('userInput');
                         if (userInput) {
                             userInput.disabled = false;
@@ -188,13 +447,11 @@
                             userInput.focus();
                         }
                         
-                        // Ensure send button is enabled
                         const sendButton = document.querySelector('.btn-send');
                         if (sendButton) {
                             sendButton.disabled = false;
                         }
                         
-                        // Ensure view is at bottom (use global helper if available)
                         if (window.scrollChatToBottom) {
                             setTimeout(() => window.scrollChatToBottom({ smooth: false }), 20);
                         }
@@ -212,171 +469,139 @@
         function exportData() {
             window.open('/api/analytics/export', '_blank');
         }
-    </script>
-
-    <!-- Global helper: robust chat scroll utility -->
-    <script>
-    // Find the best scroll container for chat and scroll it to bottom reliably
-    function _getChatScrollContainer() {
-        const chatMessages = document.getElementById('chatMessages');
-        if (!chatMessages) return null;
-        const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
-        // If messages-wrapper exists and is scrollable (content taller than box), use it
-        if (messagesWrapper && messagesWrapper.scrollHeight > messagesWrapper.clientHeight) {
-            return messagesWrapper;
+        
+        function _getChatScrollContainer() {
+            const chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) return null;
+            const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
+            if (messagesWrapper && messagesWrapper.scrollHeight > messagesWrapper.clientHeight) {
+                return messagesWrapper;
+            }
+            return chatMessages;
         }
-        // Otherwise use outer chat container
-        return chatMessages;
-    }
 
-    // options: { smooth: boolean }
-    function scrollChatToBottom(options = {}) {
-        const el = _getChatScrollContainer();
-        if (!el) return;
-        const smooth = !!options.smooth;
-        // double rAF to wait for layout/render of large text insertions
-        requestAnimationFrame(() => {
+        function scrollChatToBottom(options = {}) {
+            const el = _getChatScrollContainer();
+            if (!el) return;
+            const smooth = !!options.smooth;
             requestAnimationFrame(() => {
-                try {
-                    if (smooth && el.scrollTo) {
-                        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-                    } else {
-                        el.scrollTop = el.scrollHeight;
+                requestAnimationFrame(() => {
+                    try {
+                        if (smooth && el.scrollTo) {
+                            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                        } else {
+                            el.scrollTop = el.scrollHeight;
+                        }
+                    } catch (e) {
+                        try { el.scrollTop = el.scrollHeight; } catch (_) {}
                     }
-                } catch (e) {
-                    try { el.scrollTop = el.scrollHeight; } catch (_) {}
-                }
+                });
             });
-        });
-    }
-
-    // Expose globally
-    window.scrollChatToBottom = scrollChatToBottom;
-    </script>
-
-    <script>
-    // Fixed table rendering - reorder columns to put 'no' first if it exists
-    function renderTable(container, rows) {
-        container.innerHTML = '';
-        if (!rows || !Array.isArray(rows) || rows.length === 0) {
-            container.textContent = 'No table data.';
-            return;
         }
-        
-        // Add record count display
-        const recordCountDiv = document.createElement('div');
-        recordCountDiv.className = 'record-count';
-        recordCountDiv.textContent = `Number of records: ${rows.length}`;
-        recordCountDiv.style.cssText = `
-            text-align: left;
-            margin-bottom: 10px;
-            font-weight: 500;
-            color: var(--primary-color);
-            padding: 5px 10px;
-            background-color: #e9ecef;
-            border-radius: 5px;
-            display: inline-block;
-        `;
-        container.appendChild(recordCountDiv);
-        
-        // Get all columns
-        const allColumns = Array.from(rows.reduce((set, row) => {
-            Object.keys(row || {}).forEach(k => set.add(k));
-            return set;
-        }, new Set()));
-        
-        // Reorder columns to put 'no' or '#' first if it exists
-        let columns = [];
-        const numberColumns = ['no', '#', 'num', 'number'];
-        const numberCol = allColumns.find(col => numberColumns.includes(col.toLowerCase()));
-        
-        if (numberCol) {
-            columns.push(numberCol);
-            columns.push(...allColumns.filter(col => col !== numberCol));
-        } else {
-            columns = allColumns;
-        }
-        
-        const table = document.createElement('table');
-        table.style.cssText = `
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            direction: ltr;
-        `;
-        
-        const thead = document.createElement('thead');
-        const trh = document.createElement('tr');
-        
-        // Add headers in the correct order
-        columns.forEach((col, index) => {
-            const th = document.createElement('th');
-            // Display '#' for the number column header
-            th.textContent = (index === 0 && numberCol && col === numberCol) ? '#' : col;
-            th.style.cssText = `
-                border: 1px solid #dee2e6;
-                padding: 8px;
-                text-align: left;
-                background-color: var(--light-bg);
-                font-weight: 600;
-                ${index === 0 && numberCol ? 'width: 50px;' : ''}
-            `;
-            trh.appendChild(th);
-        });
-        thead.appendChild(trh);
-        table.appendChild(thead);
 
-        const tbody = document.createElement('tbody');
-        rows.forEach(r => {
-            const tr = document.createElement('tr');
+        window.scrollChatToBottom = scrollChatToBottom;
+        
+        function renderTable(container, rows) {
+            container.innerHTML = '';
+            if (!rows || !Array.isArray(rows) || rows.length === 0) {
+                container.textContent = 'No table data.';
+                return;
+            }
             
-            // Add data cells in the correct order
+            const recordCountDiv = document.createElement('div');
+            recordCountDiv.className = 'record-count';
+            recordCountDiv.textContent = `Number of records: ${rows.length}`;
+            recordCountDiv.style.cssText = `
+                text-align: left;
+                margin-bottom: 10px;
+                font-weight: 500;
+                color: #374151;
+                padding: 5px 10px;
+                background-color: #f3f4f6;
+                border-radius: 5px;
+                display: inline-block;
+            `;
+            container.appendChild(recordCountDiv);
+            
+            const allColumns = Array.from(rows.reduce((set, row) => {
+                Object.keys(row || {}).forEach(k => set.add(k));
+                return set;
+            }, new Set()));
+            
+            let columns = [];
+            const numberColumns = ['no', '#', 'num', 'number'];
+            const numberCol = allColumns.find(col => numberColumns.includes(col.toLowerCase()));
+            
+            if (numberCol) {
+                columns.push(numberCol);
+                columns.push(...allColumns.filter(col => col !== numberCol));
+            } else {
+                columns = allColumns;
+            }
+            
+            const table = document.createElement('table');
+            table.style.cssText = `
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+                direction: ltr;
+            `;
+            
+            const thead = document.createElement('thead');
+            const trh = document.createElement('tr');
+            
             columns.forEach((col, index) => {
-                const td = document.createElement('td');
-                let val = r && r[col] != null ? r[col] : '';
-                td.textContent = String(val);
-                
-                // Check if value is negative and apply red color
-                const numericValue = parseFloat(val);
-                let cellStyle = `
-                    border: 1px solid #dee2e6;
+                const th = document.createElement('th');
+                th.textContent = (index === 0 && numberCol && col === numberCol) ? '#' : col;
+                th.style.cssText = `
+                    border: 1px solid #e5e7eb;
                     padding: 8px;
                     text-align: left;
+                    background-color: #f9fafb;
+                    font-weight: 600;
+                    ${index === 0 && numberCol ? 'width: 50px;' : ''}
                 `;
-                
-                if (!isNaN(numericValue) && numericValue < 0) {
-                    cellStyle += 'color: #dc3545; font-weight: 600;';
-                }
-                
-                // Special styling for the number column
-                if (index === 0 && numberCol && col === numberCol) {
-                    cellStyle += 'font-weight: 500; background-color: #f8f9fa;';
-                }
-                
-                td.style.cssText = cellStyle;
-                tr.appendChild(td);
+                trh.appendChild(th);
             });
-            tbody.appendChild(tr);
-        });
-        table.appendChild(tbody);
+            thead.appendChild(trh);
+            table.appendChild(thead);
 
-        const wrap = document.createElement('div');
-        wrap.className = 'table-wrap';
-        wrap.appendChild(table);
-        container.appendChild(wrap);
-    }
-    
-    // Append a chat row
-    function appendChat(container, text, isUser) {
-        const row = document.createElement('div');
-        row.className = 'chat-row';
-        const bubble = document.createElement('div');
-        bubble.className = isUser ? 'chat-user' : 'chat-bot';
-        bubble.textContent = text;
-        row.appendChild(bubble);
-        container.appendChild(row);
-        container.scrollTop = container.scrollHeight;
-    }
+            const tbody = document.createElement('tbody');
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                
+                columns.forEach((col, index) => {
+                    const td = document.createElement('td');
+                    let val = r && r[col] != null ? r[col] : '';
+                    td.textContent = String(val);
+                    
+                    const numericValue = parseFloat(val);
+                    let cellStyle = `
+                        border: 1px solid #e5e7eb;
+                        padding: 8px;
+                        text-align: left;
+                    `;
+                    
+                    if (!isNaN(numericValue) && numericValue < 0) {
+                        cellStyle += 'color: #dc2626; font-weight: 600;';
+                    }
+                    
+                    if (index === 0 && numberCol && col === numberCol) {
+                        cellStyle += 'font-weight: 500; background-color: #f9fafb;';
+                    }
+                    
+                    td.style.cssText = cellStyle;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'table-wrap';
+            wrap.appendChild(table);
+            container.appendChild(wrap);
+        }
     </script>
 
     {% block extra_scripts %}{% endblock %}
