@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - QAD ERP Assistant{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 20px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%, transparent);
+        background-size: 20px 20px;
+        animation: move 2s linear infinite;
+    }
+    
+    @keyframes move {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(20px); }
+    }
+    
+    .metric-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .metric-icon {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 2rem;
+        opacity: 0.3;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    
+    .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 400px;
+        color: #666;
+    }
+    
+    .loading i {
+        margin-right: 10px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .top-queries {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .query-item {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s ease;
+    }
+    
+    .query-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .query-item:last-child {
+        border-bottom: none;
+    }
+    
+    .query-text {
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+    
+    .query-count {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    .refresh-btn {
+        background: var(--secondary-color);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+    
+    .refresh-btn:hover {
+        background: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="fas fa-chart-bar me-2"></i>Analytics Dashboard</h2>
+        <p class="text-muted">Monitor your QAD ERP assistant usage and performance metrics</p>
+        <button class="btn refresh-btn" onclick="refreshAllData()">
+            <i class="fas fa-sync-alt me-1"></i>Refresh Data
+        </button>
+    </div>
+</div>
+
+<!-- Metrics Row -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <i class="fas fa-comments metric-icon"></i>
+            <div class="metric-number" id="totalQueries">-</div>
+            <div class="metric-label">Total Queries</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <i class="fas fa-calendar-day metric-icon"></i>
+            <div class="metric-number" id="queriesToday">-</div>
+            <div class="metric-label">Queries Today</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="metric-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <i class="fas fa-file-invoice metric-icon"></i>
+            <div class="metric-number" id="totalRequisitions">-</div>
+            <div class="metric-label">Requisitions Created</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="metric-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <i class="fas fa-users metric-icon"></i>
+            <div class="metric-number" id="activeSessions">-</div>
+            <div class="metric-label">Active Sessions</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="chart-container">
+            <h4 class="mb-3"><i class="fas fa-pie-chart me-2"></i>Query Categories</h4>
+            <div id="queryCategoriesChart">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>Loading chart...
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="chart-container">
+            <h4 class="mb-3"><i class="fas fa-line-chart me-2"></i>Daily Activity</h4>
+            <div id="dailyActivityChart">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>Loading chart...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="chart-container">
+            <h4 class="mb-3"><i class="fas fa-shopping-cart me-2"></i>Requisition Trends</h4>
+            <div id="requisitionTrendsChart">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>Loading chart...
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="top-queries">
+            <h4 class="mb-3"><i class="fas fa-list me-2"></i>Top Queries</h4>
+            <div id="topQueriesList">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>Loading data...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function loadOverviewData() {
+    try {
+        const response = await fetch('/api/analytics/overview');
+        const data = await response.json();
+        
+        document.getElementById('totalQueries').textContent = data.total_queries.toLocaleString();
+        document.getElementById('queriesToday').textContent = data.queries_today.toLocaleString();
+        document.getElementById('totalRequisitions').textContent = data.total_requisitions.toLocaleString();
+        document.getElementById('activeSessions').textContent = data.active_sessions.toLocaleString();
+    } catch (error) {
+        console.error('Error loading overview data:', error);
+    }
+}
+
+async function loadQueryCategories() {
+    try {
+        const response = await fetch('/api/analytics/query_categories');
+        const plotData = await response.json();
+        Plotly.newPlot('queryCategoriesChart', plotData.data, plotData.layout, {responsive: true});
+    } catch (error) {
+        console.error('Error loading query categories:', error);
+        document.getElementById('queryCategoriesChart').innerHTML = '<div class="text-center text-muted">Error loading chart</div>';
+    }
+}
+
+async function loadDailyActivity() {
+    try {
+        const response = await fetch('/api/analytics/daily_activity');
+        const plotData = await response.json();
+        Plotly.newPlot('dailyActivityChart', plotData.data, plotData.layout, {responsive: true});
+    } catch (error) {
+        console.error('Error loading daily activity:', error);
+        document.getElementById('dailyActivityChart').innerHTML = '<div class="text-center text-muted">Error loading chart</div>';
+    }
+}
+
+async function loadRequisitionTrends() {
+    try {
+        const response = await fetch('/api/analytics/requisition_trends');
+        const plotData = await response.json();
+        Plotly.newPlot('requisitionTrendsChart', plotData.data, plotData.layout, {responsive: true});
+    } catch (error) {
+        console.error('Error loading requisition trends:', error);
+        document.getElementById('requisitionTrendsChart').innerHTML = '<div class="text-center text-muted">Error loading chart</div>';
+    }
+}
+
+async function loadTopQueries() {
+    try {
+        const response = await fetch('/api/analytics/top_queries');
+        const data = await response.json();
+        
+        const listHtml = data.map((item, index) => `
+            <div class="query-item">
+                <div class="query-text">${index + 1}. ${item.query}</div>
+                <div class="query-count">${item.count} queries</div>
+            </div>
+        `).join('');
+        
+        document.getElementById('topQueriesList').innerHTML = listHtml;
+    } catch (error) {
+        console.error('Error loading top queries:', error);
+        document.getElementById('topQueriesList').innerHTML = '<div class="text-center text-muted">Error loading data</div>';
+    }
+}
+
+function refreshAllData() {
+    const refreshBtn = document.querySelector('.refresh-btn');
+    const originalHtml = refreshBtn.innerHTML;
+    
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+    refreshBtn.disabled = true;
+    
+    Promise.all([
+        loadOverviewData(),
+        loadQueryCategories(),
+        loadDailyActivity(),
+        loadRequisitionTrends(),
+        loadTopQueries()
+    ]).finally(() => {
+        refreshBtn.innerHTML = originalHtml;
+        refreshBtn.disabled = false;
+    });
+}
+
+// Load all data on page load
+window.addEventListener('load', function() {
+    refreshAllData();
+});
+
+// Auto-refresh every 5 minutes
+setInterval(refreshAllData, 300000);
+</script>
+{% endblock %}

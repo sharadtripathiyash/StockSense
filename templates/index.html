@@ -1,0 +1,787 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - QAD ERP Assistant{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-container {
+        height: 600px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 20px;
+        background: white;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .messages-wrapper {
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+    
+    .message {
+        margin-bottom: 20px;
+        opacity: 0;
+        animation: slideIn 0.3s ease forwards;
+    }
+    
+    .message.user {
+        text-align: right;
+    }
+    
+    .message.bot {
+        text-align: left;
+    }
+    
+    .message-content {
+        display: inline-block;
+        max-width: 70%;
+        padding: 15px 20px;
+        border-radius: 20px;
+        position: relative;
+    }
+    
+    .message.user .message-content {
+        background: linear-gradient(135deg, var(--secondary-color), #5dade2);
+        color: white;
+        border-bottom-right-radius: 5px;
+    }
+    
+    .message.bot .message-content {
+        background: #f1f3f4;
+        color: var(--primary-color);
+        border-bottom-left-radius: 5px;
+    }
+    
+    .message-time {
+        font-size: 0.8rem;
+        opacity: 0.7;
+        margin-top: 5px;
+    }
+    
+    .typing-indicator {
+        display: none;
+        margin-bottom: 10px;
+    }
+    
+    .typing-indicator.show {
+        display: block !important;
+    }
+    
+    .typing-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #90949c;
+        margin: 0 2px;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    
+    .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes typing {
+        0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.4;
+        }
+        30% {
+            transform: translateY(-10px);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .input-group {
+        border-radius: 25px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .form-control {
+        border: none;
+        padding: 15px 20px;
+    }
+    
+    .btn-send {
+        border: none;
+        background: var(--secondary-color);
+        padding: 15px 25px;
+    }
+    
+    .btn-send:hover {
+        background: var(--primary-color);
+    }
+    
+    .quick-actions {
+        margin-bottom: 20px;
+    }
+    
+    .quick-btn {
+        margin: 5px;
+        border-radius: 20px;
+        padding: 8px 16px;
+        border: 1px solid var(--secondary-color);
+        color: var(--secondary-color);
+        background: white;
+        transition: all 0.3s ease;
+    }
+    
+    .quick-btn:hover {
+        background: var(--secondary-color);
+        color: white;
+    }
+
+    /* Table styling */
+    .table-wrap table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        direction: ltr;
+    }
+    .table-wrap th, .table-wrap td {
+        border: 1px solid #dee2e6;
+        padding: 8px;
+        text-align: left;
+    }
+    .table-wrap th {
+        background-color: var(--light-bg);
+        font-weight: 600;
+    }
+    .table-wrap ol, .table-wrap ul {
+        margin: 0;
+        padding-left: 20px;
+        list-style-position: inside;
+    }
+    
+    /* Record count styling */
+    .record-count {
+        text-align: left;
+        margin-bottom: 10px;
+        font-weight: 500;
+        color: var(--primary-color);
+        padding: 5px 10px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        display: inline-block;
+    }
+    
+    /* Requisition action buttons */
+    .requisition-actions {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 8px;
+    }
+    
+    .requisition-prompt {
+        margin-bottom: 12px;
+        font-weight: 500;
+        color: var(--primary-color);
+    }
+    
+    .requisition-btn {
+        display: inline-block;
+        margin: 4px 6px;
+        padding: 6px 10px;
+        background: white;
+        color: var(--secondary-color);
+        border: 1.5px solid var(--secondary-color);
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        font-weight: 500;
+        font-size: 0.9rem;
+        line-height: 1;
+    }
+    
+    .requisition-btn:hover {
+        background: var(--secondary-color);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+    
+    .requisition-btn.success {
+        background: var(--success-color);
+        border-color: var(--success-color);
+        color: white;
+    }
+    
+    .requisition-btn.warning {
+        background: var(--warning-color);
+        border-color: var(--warning-color);
+        color: white;
+    }
+    
+    .requisition-btn i {
+        margin-right: 6px;
+        font-size: 0.95em;
+    }
+    
+    .specific-items-input {
+        display: none;
+        margin-top: 8px;
+        padding: 8px;
+        background: white;
+        border-radius: 6px;
+    }
+    
+    .specific-items-input input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+    
+    .specific-items-input button {
+        padding: 5px 10px;
+        margin-right: 6px;
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-robot me-2"></i>QAD ERP Assistant</h4>
+            </div>
+            <div class="card-body">
+                <div class="quick-actions">
+                    <button class="btn quick-btn" onclick="sendQuickMessage('Show me low inventory items')">
+                        <i class="fas fa-boxes me-1"></i>Low Inventory
+                    </button>
+                    <button class="btn quick-btn" onclick="sendQuickMessage('What should I order?')">
+                        <i class="fas fa-shopping-cart me-1"></i>Items to Order
+                    </button>
+                    <button class="btn quick-btn" onclick="sendQuickMessage('Show inventory report')">
+                        <i class="fas fa-chart-line me-1"></i>Inventory Report
+                    </button>
+                    <button class="btn quick-btn" onclick="sendQuickMessage('Show supplier information')">
+                        <i class="fas fa-truck me-1"></i>Suppliers
+                    </button>
+                </div>
+                
+                <div id="chatMessages" class="chat-container">
+                    <div class="messages-wrapper">
+                        <div class="message bot">
+                            <div class="message-content">
+                                <div>Hello! I'm your QAD assistant. I can help you with:</div>
+                                <ul class="mt-2 mb-0">
+                                    <li>Inventory queries and low stock alerts</li>
+                                    <li>Purchase requisition creation</li>
+                                    <li>Database reports and analytics</li>
+                                    <li>General ERP system queries</li>
+                                </ul>
+                                <div>How can I assist you today?</div>
+                            </div>
+                            <div class="message-time">Just now</div>
+                        </div>
+                    </div>
+                    
+                    <div class="message bot typing-indicator" id="typingIndicator">
+                        <div class="message-content">
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="input-group mt-3">
+                    <input type="text" id="userInput" class="form-control" 
+                           placeholder="Ask about inventory, create requisitions, or any ERP query..." 
+                           onkeypress="handleKeyPress(event)">
+                    <button class="btn btn-primary btn-send" type="button" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+let lastItemsData = null; // Store the last items data for requisition creation
+
+// Escape HTML to avoid accidental injection when inserting text into HTML bubbles
+function escapeHTML (str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+}
+
+// Updated displayMessage function - replace the existing one in index.html
+
+function displayMessage(content, isUser = false, tableData = null) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+    
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    // Store table data if present
+    if (tableData && tableData.length > 0) {
+        lastItemsData = tableData;
+    }
+    
+    // Check if the response contains requisition prompt
+    const hasRequisitionPrompt = content.includes('Would you like me to create purchase requisitions') || 
+                                 content.includes('create requisitions for') ||
+                                 content.includes('all items') ||
+                                 content.includes('specific items');
+    
+    // Detect HTML content (simple heuristic)
+    const isHtmlContent = /<\/?[a-z][\s\S]*>/i.test(content);
+
+    // If this response contains a requisition prompt, render actionable buttons
+    if (hasRequisitionPrompt) {
+        const messageId = 'msg_' + Date.now();
+
+        // Build safe content: if it's HTML (table) keep as-is, otherwise escape
+        let safeContentRaw = content;
+
+        // REMOVE the requisition prompt text entirely since we're showing buttons
+        if (!isHtmlContent) {
+            // Look for the common instruction markers and remove everything from them
+            const instrMarkers = [
+                'Would you like me to create purchase requisitions for these items?',
+                'Would you like me to create purchase requisitions',
+                'Please respond with:',
+                "- 'all items' to create requisitions for all listed items",
+                "- 'specific items' and mention which ones",
+                "- 'skip' if you don't want to create requisitions"
+            ];
+            
+            instrMarkers.forEach(marker => {
+                const idx = safeContentRaw.indexOf(marker);
+                if (idx !== -1) {
+                    // Keep only the text before the instruction marker
+                    safeContentRaw = safeContentRaw.substring(0, idx).trim();
+                }
+            });
+            
+            // Also remove any bullet point instructions that might remain
+            safeContentRaw = safeContentRaw.replace(/- '[^']*' to [^\n]*\n?/g, '');
+            safeContentRaw = safeContentRaw.replace(/- "[^"]*" and [^\n]*\n?/g, '');
+            safeContentRaw = safeContentRaw.replace(/- '[^']*' if [^\n]*\n?/g, '');
+        } else {
+            // For HTML content, remove the text instructions but keep the table
+            // Look for the instruction part and remove it
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // Remove any text nodes that contain requisition instructions
+            const walker = document.createTreeWalker(
+                tempDiv,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            const nodesToRemove = [];
+            let node;
+            
+            while (node = walker.nextNode()) {
+                if (node.textContent.includes('Would you like me to create purchase requisitions') ||
+                    node.textContent.includes('Please respond with:') ||
+                    node.textContent.includes("'all items'") ||
+                    node.textContent.includes("'specific items'") ||
+                    node.textContent.includes("'skip'")) {
+                    nodesToRemove.push(node);
+                }
+            }
+            
+            nodesToRemove.forEach(node => {
+                if (node.parentNode) {
+                    node.parentNode.removeChild(node);
+                }
+            });
+            
+            safeContentRaw = tempDiv.innerHTML;
+        }
+
+        const safeContent = isHtmlContent ? safeContentRaw : (safeContentRaw ? '<div style="white-space: pre-wrap;">' + escapeHTML(safeContentRaw) + '</div>' : '');
+
+        // Actions HTML: buttons + hidden specific-items input
+        const actionsHtml = `
+            <div id="${messageId}" class="requisition-actions">
+                <div class="requisition-prompt"><i class="fas fa-question-circle"></i> Would you like me to create purchase requisitions for these items?</div>
+                <div>
+                    <button class="requisition-btn success" onclick="handleRequisitionAction('all', '${messageId}')"><i class="fas fa-check-circle"></i> all items</button>
+                    <button class="requisition-btn warning" onclick="showSpecificItemsInput('${messageId}')"><i class="fas fa-list-ul"></i> specific items</button>
+                    <button class="requisition-btn" onclick="handleRequisitionAction('skip', '${messageId}')"><i class="fas fa-times-circle"></i> skip</button>
+                </div>
+                <div class="specific-items-input" id="specific_${messageId}" style="display:none;">
+                    <input type="text" placeholder="Enter item numbers or part names (e.g., 1,3 or 11180, LV5163)" id="input_${messageId}" onkeypress="if(event.key==='Enter') submitSpecificItems('${messageId}')">
+                    <button class="btn btn-sm btn-primary" onclick="submitSpecificItems('${messageId}')">Submit</button>
+                    <button class="btn btn-sm btn-secondary" onclick="hideSpecificItemsInput('${messageId}')">Cancel</button>
+                </div>
+            </div>
+        `;
+
+        messageDiv.innerHTML = `
+            <div class="message-content" dir="ltr">
+                ${safeContent}
+                ${actionsHtml}
+            </div>
+            <div class="message-time">${timeString}</div>
+        `;
+    } else if (isHtmlContent) {
+        // Insert as HTML (table + text combined). Force LTR at bubble level to keep numbering on left.
+        messageDiv.innerHTML = `
+            <div class="message-content" dir="ltr">
+                ${content}
+            </div>
+            <div class="message-time">${timeString}</div>
+        `;
+    } else {
+        // Regular text message
+        const safeText = escapeHTML(content);
+        messageDiv.innerHTML = `
+            <div class="message-content">
+                <div style="white-space: pre-wrap;">${safeText}</div>
+            </div>
+            <div class="message-time">${timeString}</div>
+        `;
+    }
+    
+    // Append the message to messages-wrapper
+    messagesWrapper.appendChild(messageDiv);
+    
+    // Scroll only when this is a user query (new query). Do NOT auto-scroll on bot responses.
+    if (isUser) {
+        if (window.scrollChatToBottom) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.scrollChatToBottom({ smooth: false });
+                });
+            });
+        } else {
+            // fallback
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 50);
+        }
+    }
+    
+    // Save to history
+    chatHistory.push({content, isUser, timestamp: now.toISOString()});
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+}
+
+function handleRequisitionAction(action, messageId) {
+    let message = '';
+    
+    if (action === 'all') {
+        message = 'all items';
+    } else if (action === 'skip') {
+        message = 'skip';
+    }
+    
+    // Disable the buttons after selection
+    const actionsDiv = document.getElementById(messageId);
+    if (actionsDiv) {
+        const buttons = actionsDiv.querySelectorAll('.requisition-btn');
+        buttons.forEach(btn => btn.disabled = true);
+        
+        // Add visual feedback
+        actionsDiv.style.opacity = '0.6';
+        
+        // Add a status message
+        const statusDiv = document.createElement('div');
+        statusDiv.style.cssText = 'margin-top: 10px; color: var(--success-color); font-weight: 500;';
+        statusDiv.innerHTML = `<i class="fas fa-check"></i> Selected: ${action === 'all' ? 'Create requisitions for all items' : action === 'skip' ? 'Skip requisition creation' : ''}`;
+        actionsDiv.appendChild(statusDiv);
+    }
+    
+    // Send the message
+    document.getElementById('userInput').value = message;
+    sendMessage();
+}
+
+function showSpecificItemsInput(messageId) {
+    const inputDiv = document.getElementById('specific_' + messageId);
+    if (inputDiv) {
+        inputDiv.style.display = 'block';
+        document.getElementById('input_' + messageId).focus();
+    }
+}
+
+function hideSpecificItemsInput(messageId) {
+    const inputDiv = document.getElementById('specific_' + messageId);
+    if (inputDiv) {
+        inputDiv.style.display = 'none';
+    }
+}
+
+function submitSpecificItems(messageId) {
+    const input = document.getElementById('input_' + messageId);
+    if (input && input.value.trim()) {
+        const message = `specific items: ${input.value.trim()}`;
+        
+        // Disable the buttons after selection
+        const actionsDiv = document.getElementById(messageId);
+        if (actionsDiv) {
+            const buttons = actionsDiv.querySelectorAll('.requisition-btn');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            // Add visual feedback
+            actionsDiv.style.opacity = '0.6';
+            
+            // Add a status message
+            const statusDiv = document.createElement('div');
+            statusDiv.style.cssText = 'margin-top: 10px; color: var(--success-color); font-weight: 500;';
+            statusDiv.innerHTML = `<i class="fas fa-check"></i> Selected specific items: ${input.value.trim()}`;
+            actionsDiv.appendChild(statusDiv);
+        }
+        
+        // Send the message
+        document.getElementById('userInput').value = message;
+        sendMessage();
+    }
+}
+
+function showTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) {
+        indicator.classList.add('show');
+        // Keep scrolling when typing indicator shows so user sees processing state
+        if (window.scrollChatToBottom) {
+            requestAnimationFrame(() => window.scrollChatToBottom({ smooth: false }));
+        } else {
+            setTimeout(() => {
+                const el = document.getElementById('chatMessages');
+                if (el) el.scrollTop = el.scrollHeight;
+            }, 20);
+        }
+    }
+}
+
+function hideTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) {
+        indicator.classList.remove('show');
+    }
+    // Do NOT force scroll here — avoid jumping when large bot responses render.
+}
+
+async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const sendButton = document.querySelector('.btn-send');
+    const message = input.value.trim();
+    
+    if (!message) {
+        console.log('Empty message, not sending');
+        return;
+    }
+    
+    console.log('Sending message:', message);
+    
+    // Disable input and button during processing
+    input.disabled = true;
+    sendButton.disabled = true;
+    
+    try {
+        // Display user message (this will scroll)
+        displayMessage(message, true);
+        input.value = '';
+        
+        // Show typing indicator (also scrolls)
+        showTypingIndicator();
+        
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: message })
+        });
+        
+        const data = await response.json();
+        
+        // Hide typing indicator (do NOT scroll here)
+        hideTypingIndicator();
+        
+        if (data.error) {
+            displayMessage('Sorry, I encountered an error. Please try again.', false);
+        } else {
+            // If tableData present, render table into a temp container and combine with response text
+            let combinedContent = data.response || '';
+            if (Array.isArray(data.tableData) && data.tableData.length > 0) {
+                const temp = document.createElement('div');
+                // reuse renderTable (defined in base.html) to build DOM inside temp
+                if (typeof renderTable === 'function') {
+                    renderTable(temp, data.tableData);
+                    const tableHtml = temp.innerHTML;
+                    // wrap response text with pre-wrap and escape it so bullets/newlines are preserved
+                    const safeResponse = '<div style="margin-top:8px; white-space: pre-wrap;">' + escapeHTML(data.response || '') + '</div>';
+                    combinedContent = tableHtml + safeResponse;
+                } else {
+                    // fallback: simple HTML table builder with record count
+                    let cols = [];
+                    data.tableData.forEach(row => { Object.keys(row||{}).forEach(k => { if (!cols.includes(k)) cols.push(k); }); });
+                    let htmlTable = `<div class="record-count">Number of records: ${data.tableData.length}</div>`;
+                    htmlTable += '<div class="table-wrap"><table><thead><tr>' + cols.map(c => `<th>${escapeHTML(c)}</th>`).join('') + '</tr></thead><tbody>';
+                    data.tableData.forEach(row => {
+                        htmlTable += '<tr>' + cols.map(c => {
+                            const val = row && row[c] != null ? row[c] : '';
+                            const numericValue = parseFloat(val);
+                            const isNegative = !isNaN(numericValue) && numericValue < 0;
+                            const cellStyle = isNegative ? 'color: #dc3545; font-weight: 600;' : '';
+                            return `<td style="border: 1px solid #dee2e6; padding: 8px; text-align: left; ${cellStyle}">${escapeHTML(val)}</td>`;
+                        }).join('') + '</tr>';
+                    });
+                    htmlTable += '</tbody></table></div>';
+                    const safeResponse = '<div style="margin-top:8px; white-space: pre-wrap;">' + escapeHTML(data.response || '') + '</div>';
+                    combinedContent = htmlTable + safeResponse;
+                }
+                
+                // Pass the table data to displayMessage for potential requisition actions
+                displayMessage(combinedContent, false, data.tableData);
+            } else {
+                // Regular message without table data
+                displayMessage(data.response || '', false);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error sending message:', error);
+        hideTypingIndicator();
+        displayMessage('Sorry, I encountered a network error. Please check your connection and try again.', false);
+    } finally {
+        // Re-enable input and button
+        input.disabled = false;
+        sendButton.disabled = false;
+        input.focus();
+    }
+}
+
+function sendQuickMessage(message) {
+    document.getElementById('userInput').value = message;
+    sendMessage();
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        const input = document.getElementById('userInput');
+        if (!input.disabled && input.value.trim()) {
+            sendMessage();
+        }
+    }
+}
+
+// Remove local scrollToBottom; use global helper exposed by base.html
+function scrollToBottom() {
+    if (window.scrollChatToBottom) {
+        window.scrollChatToBottom({ smooth: false });
+    } else {
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+// Load chat history on page load
+window.addEventListener('load', function() {
+    console.log('Page loaded, initializing chat...');
+    
+    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+    
+    if (chatMessages && userInput) {
+        const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
+        
+        // Ensure input is enabled
+        userInput.disabled = false;
+        userInput.focus();
+        
+        // Load history but don't duplicate welcome message
+        const existingHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+        
+        // Only load non-welcome messages from history
+        const filteredHistory = existingHistory.filter(msg => 
+            !msg.content.includes("Hello! I'm your QAD ERP assistant")
+        );
+        
+        if (filteredHistory.length > 0) {
+            // Add historical messages after the welcome message
+            filteredHistory.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.isUser ? 'user' : 'bot'}`;
+                
+                const timeString = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                // Detect HTML in historical content as well
+                const isHtmlContent = /<\/?[a-z][\s\S]*>/i.test(msg.content);
+                if (isHtmlContent) {
+                    messageDiv.innerHTML = `
+                        <div class="message-content" dir="ltr">
+                            ${msg.content}
+                        </div>
+                        <div class="message-time">${timeString}</div>
+                    `;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="message-content">
+                            <div style="white-space: pre-wrap;">${escapeHTML(msg.content)}</div>
+                        </div>
+                        <div class="message-time">${timeString}</div>
+                    `;
+                }
+                
+                messagesWrapper.appendChild(messageDiv);
+            });
+        }
+        
+        // Update chatHistory variable
+        chatHistory = [
+            // Don't include welcome message in chatHistory to avoid duplicates
+            ...filteredHistory
+        ];
+        
+        // Ensure view is at bottom after loading history (give layout time)
+        if (window.scrollChatToBottom) {
+            setTimeout(() => window.scrollChatToBottom({ smooth: false }), 50);
+            setTimeout(() => window.scrollChatToBottom({ smooth: false }), 200);
+        } else {
+            setTimeout(scrollToBottom, 50);
+            setTimeout(scrollToBottom, 200);
+        }
+    }
+    
+    console.log('Chat initialization complete');
+});
+</script>
+{% endblock %}

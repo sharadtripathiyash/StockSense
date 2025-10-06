@@ -1,0 +1,934 @@
+{% extends "base.html" %}
+
+{% block title %}Interactive Business Intelligence Dashboard - QAD ERP Assistant{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.plot.ly/plotly-latest.min.css" rel="stylesheet">
+<style>
+    .dashboard-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 30px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-header h3 {
+        margin: 0;
+        font-size: 2.2rem;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .executive-summary {
+        background: rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .kpi-card {
+        background: rgba(255,255,255,0.95);
+        color: var(--primary-color);
+        border-radius: 16px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    
+    .kpi-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+    
+    .kpi-card.high-priority {
+        border-left: 8px solid #e74c3c;
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(231,76,60,0.05) 100%);
+    }
+    
+    .kpi-card.medium-priority {
+        border-left: 8px solid #f39c12;
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(243,156,18,0.05) 100%);
+    }
+    
+    .kpi-card.low-priority {
+        border-left: 8px solid #27ae60;
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(39,174,96,0.05) 100%);
+    }
+    
+    .kpi-value {
+        font-size: 2.8rem;
+        font-weight: 800;
+        margin: 15px 0;
+        color: var(--secondary-color);
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .kpi-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--primary-color);
+    }
+    
+    .kpi-unit {
+        font-size: 1rem;
+        color: #666;
+        margin-left: 5px;
+        font-weight: 500;
+    }
+    
+    .kpi-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        font-size: 1rem;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    
+    .kpi-trend.up {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        color: #155724;
+        box-shadow: 0 2px 8px rgba(21,87,36,0.2);
+    }
+    
+    .kpi-trend.down {
+        background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+        color: #721c24;
+        box-shadow: 0 2px 8px rgba(114,28,36,0.2);
+    }
+    
+    .kpi-trend.stable {
+        background: linear-gradient(135deg, #e2e3e5, #d6d8db);
+        color: #495057;
+        box-shadow: 0 2px 8px rgba(73,80,87,0.2);
+    }
+    
+    .kpi-trend.neutral {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        color: #6c757d;
+        box-shadow: 0 2px 8px rgba(108,117,125,0.2);
+    }
+    
+    .kpi-description {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 12px;
+        line-height: 1.5;
+        font-style: italic;
+    }
+    
+    .alerts-section {
+        margin: 25px 0;
+        display: grid;
+        gap: 12px;
+    }
+    
+    .alert-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        border-radius: 12px;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+    }
+    
+    .alert-item:hover {
+        transform: translateX(5px);
+    }
+    
+    .alert-item.warning {
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        color: #856404;
+        border-left: 5px solid #ffc107;
+    }
+    
+    .alert-item.critical {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        color: #721c24;
+        border-left: 5px solid #dc3545;
+    }
+    
+    .alert-item.info {
+        background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+        color: #0c5460;
+        border-left: 5px solid #17a2b8;
+    }
+    
+    .recommendations-section {
+        background: rgba(255,255,255,0.12);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 25px;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .recommendations-section h4 {
+        margin-bottom: 18px;
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .recommendation-item {
+        background: rgba(255,255,255,0.15);
+        padding: 14px 18px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: background 0.3s ease;
+    }
+    
+    .recommendation-item:hover {
+        background: rgba(255,255,255,0.2);
+    }
+    
+    .charts-section {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        margin-top: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .charts-header {
+        text-align: center;
+        margin-bottom: 30px;
+        color: var(--primary-color);
+    }
+    
+    .charts-header h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 30px;
+        margin-top: 25px;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        border: 1px solid #e9ecef;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .chart-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    
+    .chart-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: var(--primary-color);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .loading {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+        color: #0c5460;
+        font-size: 1.1rem;
+    }
+    
+    .loading i {
+        font-size: 2rem;
+        margin-bottom: 15px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .input-section {
+        margin-bottom: 25px;
+        background: white;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    
+    .input-group {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border-radius: 50px;
+        overflow: hidden;
+    }
+    
+    .form-control {
+        border: none;
+        padding: 18px 25px;
+        font-size: 1.1rem;
+        background: #f8f9fa;
+    }
+    
+    .btn-primary {
+        padding: 18px 30px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .message {
+        margin-bottom: 15px;
+        padding: 15px 20px;
+        border-radius: 16px;
+        max-width: 85%;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .message.user {
+        background: linear-gradient(135deg, var(--secondary-color), #5dade2);
+        color: white;
+        margin-left: auto;
+        text-align: right;
+    }
+    
+    .message.bot {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        color: var(--primary-color);
+        margin-right: auto;
+    }
+    
+    .message-time {
+        font-size: 0.85rem;
+        opacity: 0.8;
+        margin-top: 8px;
+    }
+    
+    .error-message, .processing-message {
+        text-align: center;
+        padding: 30px;
+        font-size: 1.2rem;
+        border-radius: 16px;
+        margin: 25px 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .error-message {
+        color: #721c24;
+        background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+        border: 2px solid #f5c6cb;
+    }
+    
+    .processing-message {
+        color: #0c5460;
+        background: linear-gradient(135deg, #d1ecf1, #b8daff);
+        border: 2px solid #bee5eb;
+    }
+
+    .quick-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .btn-outline-primary {
+        padding: 12px 20px;
+        border-radius: 25px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border: 2px solid var(--secondary-color);
+    }
+    
+    .btn-outline-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(52,144,220,0.3);
+    }
+    
+    /* Interactive chart styling */
+    .plotly-chart {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .trend-indicator {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        font-size: 1.5rem;
+    }
+    
+    .kpi-mini-chart {
+        position: absolute;
+        bottom: 10px;
+        right: 15px;
+        width: 60px;
+        height: 30px;
+        opacity: 0.7;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-chart-line me-3"></i>Interactive Business Intelligence Dashboard</h2>
+        <p class="text-muted lead">Transform your ERP data into interactive charts and actionable business insights for better decision making.</p>
+    </div>
+</div>
+
+<div class="row input-section">
+    <div class="col-lg-8">
+        <div class="input-group">
+            <input type="text" id="visualQuery" class="form-control" placeholder="Ask about trends, performance, analytics - e.g., 'Show inventory trends and forecasts'">
+            <button class="btn btn-primary" type="button" id="sendVisualBtn">
+                <i class="fas fa-chart-bar me-2"></i>Generate Dashboard
+            </button>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="quick-actions">
+            <button class="btn btn-outline-primary btn-sm" onclick="sendQuickVisualMessage('Show inventory performance trends and forecasts')">
+                <i class="fas fa-boxes me-1"></i> Inventory Trends
+            </button>
+            <button class="btn btn-outline-primary btn-sm" onclick="sendQuickVisualMessage('Analyze purchase patterns and supplier performance')">
+                <i class="fas fa-shopping-cart me-1"></i> Purchase Analytics
+            </button>
+            <button class="btn btn-outline-primary btn-sm" onclick="sendQuickVisualMessage('Financial performance dashboard with trends')">
+                <i class="fas fa-chart-pie me-1"></i> Financial Insights
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Main Dashboard Section -->
+<div class="row">
+    <div class="col-12">
+        <div id="dashboardContainer" style="display: none;">
+            <!-- Dashboard content will be dynamically inserted here -->
+        </div>
+        
+        <div id="loadingSection" style="display: none;">
+            <div class="processing-message">
+                <i class="fas fa-cogs fa-spin"></i>
+                <div>Analyzing your data and creating interactive business intelligence dashboard...</div>
+            </div>
+        </div>
+        
+        <div id="errorSection" style="display: none;">
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span id="errorText">Unable to generate interactive dashboard. Please try again with a business-focused query.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Charts Section -->
+<div class="row">
+    <div class="col-12">
+        <div id="chartsSection" style="display: none;">
+            <div class="charts-section">
+                <div class="charts-header">
+                    <h3><i class="fas fa-chart-area me-2"></i>Interactive Analytics & Trends</h3>
+                    <p class="text-muted">Explore your data through interactive visualizations</p>
+                </div>
+                <div class="charts-grid" id="chartsGrid">
+                    <!-- Interactive charts will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat History -->
+<div class="row mt-4">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-comments me-2"></i>Query History & Responses</h5>
+            </div>
+            <div class="card-body">
+                <div class="chat-container" style="height:250px; overflow-y:auto; padding:15px;">
+                    <div class="messages-wrapper" id="chatMessages"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+// Enhanced Interactive Dashboard Functions
+function createInteractiveDashboard(kpiData) {
+    const container = document.getElementById('dashboardContainer');
+    const chartsSection = document.getElementById('chartsSection');
+    
+    // Show dashboard
+    container.style.display = 'block';
+    
+    let dashboardHTML = `
+        <div class="dashboard-container">
+            <div class="dashboard-header">
+                <h3><i class="fas fa-tachometer-alt me-2"></i>Interactive Business Dashboard</h3>
+                <p style="font-size: 1.1rem; opacity: 0.9; margin: 10px 0 0 0;">
+                    Real-time insights and trend analysis for data-driven decisions
+                </p>
+            </div>
+    `;
+    
+    // Executive Summary
+    if (kpiData.summary) {
+        dashboardHTML += `
+            <div class="executive-summary">
+                <h5><i class="fas fa-lightbulb me-2"></i>Executive Summary</h5>
+                <p style="font-size: 1.1rem; line-height: 1.6; margin: 0;">${kpiData.summary}</p>
+            </div>
+        `;
+    }
+    
+    // Critical Alerts
+    if (kpiData.alerts && kpiData.alerts.length > 0) {
+        dashboardHTML += `<div class="alerts-section">`;
+        kpiData.alerts.forEach(alert => {
+            const iconMap = {
+                'critical': 'fas fa-exclamation-triangle',
+                'warning': 'fas fa-exclamation-circle', 
+                'info': 'fas fa-info-circle'
+            };
+            dashboardHTML += `
+                <div class="alert-item ${alert.type}">
+                    <i class="${iconMap[alert.type]}"></i>
+                    <div>
+                        <strong>${alert.metric}:</strong> ${alert.message}
+                    </div>
+                </div>
+            `;
+        });
+        dashboardHTML += `</div>`;
+    }
+    
+    // Interactive KPI Cards
+    if (kpiData.kpis && kpiData.kpis.length > 0) {
+        dashboardHTML += `<div class="kpi-grid">`;
+        kpiData.kpis.forEach((kpi, index) => {
+            const trendIcons = {
+                'up': 'fas fa-arrow-up',
+                'down': 'fas fa-arrow-down', 
+                'stable': 'fas fa-minus',
+                'neutral': 'fas fa-circle'
+            };
+            
+            const trendIcon = trendIcons[kpi.trend] || 'fas fa-circle';
+            
+            dashboardHTML += `
+                <div class="kpi-card ${kpi.priority}-priority" onclick="highlightKPI(${index})">
+                    <div class="trend-indicator">
+                        <i class="${trendIcon}" style="color: ${kpi.trend === 'up' ? '#27ae60' : kpi.trend === 'down' ? '#e74c3c' : '#6c757d'}"></i>
+                    </div>
+                    <div class="kpi-title">${kpi.title}</div>
+                    <div class="kpi-value">
+                        ${kpi.value}
+                        <span class="kpi-unit">${kpi.unit || ''}</span>
+                    </div>
+                    <div class="kpi-trend ${kpi.trend}">
+                        <i class="${trendIcon}"></i>
+                        <span>${kpi.trend.toUpperCase()}</span>
+                    </div>
+                    <div class="kpi-description">${kpi.description}</div>
+                </div>
+            `;
+        });
+        dashboardHTML += `</div>`;
+    }
+    
+    // Action Recommendations
+    if (kpiData.recommendations && kpiData.recommendations.length > 0) {
+        dashboardHTML += `
+            <div class="recommendations-section">
+                <h4><i class="fas fa-lightbulb me-2"></i>Strategic Recommendations</h4>
+        `;
+        kpiData.recommendations.forEach((rec, index) => {
+            dashboardHTML += `
+                <div class="recommendation-item">
+                    <i class="fas fa-check-circle me-2" style="color: #27ae60;"></i>
+                    <span>${rec}</span>
+                </div>`;
+        });
+        dashboardHTML += `</div>`;
+    }
+    
+    dashboardHTML += `</div>`;
+    container.innerHTML = dashboardHTML;
+    
+    // Render Interactive Charts
+    if (kpiData.charts && kpiData.charts.length > 0) {
+        chartsSection.style.display = 'block';
+        renderInteractiveCharts(kpiData.charts);
+    }
+}
+
+function renderInteractiveCharts(charts) {
+    const chartsGrid = document.getElementById('chartsGrid');
+    chartsGrid.innerHTML = '';
+    
+    charts.forEach((chart, index) => {
+        const chartDiv = document.createElement('div');
+        chartDiv.className = 'chart-container';
+        
+        const iconMap = {
+            'gauge': 'fas fa-tachometer-alt',
+            'bar': 'fas fa-chart-bar',
+            'line': 'fas fa-chart-line',
+            'pie': 'fas fa-chart-pie',
+            'metric_card': 'fas fa-square'
+        };
+        
+        chartDiv.innerHTML = `
+            <div class="chart-title">
+                <i class="${iconMap[chart.type] || 'fas fa-chart-bar'}"></i>
+                ${chart.title}
+            </div>
+            <div id="interactiveChart${index}" class="plotly-chart" style="height: 450px;"></div>
+        `;
+        chartsGrid.appendChild(chartDiv);
+        
+        // Render with enhanced interactivity
+        setTimeout(() => {
+            renderEnhancedChart(chart, `interactiveChart${index}`);
+        }, 100 * (index + 1)); // Stagger chart rendering
+    });
+}
+
+function renderEnhancedChart(chart, containerId) {
+    const data = chart.data;
+    let plotlyData = [];
+    let layout = {
+        title: {
+            text: chart.title,
+            font: { size: 16, family: 'Arial, sans-serif' }
+        },
+        responsive: true,
+        margin: { t: 40, r: 30, b: 60, l: 60 },
+        plot_bgcolor: 'rgba(248,249,250,0.8)',
+        paper_bgcolor: 'white',
+        font: { family: 'Arial, sans-serif' }
+    };
+    
+    const config = {
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+        displaylogo: false,
+        toImageButtonOptions: {
+            format: 'png',
+            filename: `${chart.title.replace(/\s+/g, '_')}_chart`,
+            height: 500,
+            width: 800,
+            scale: 1
+        }
+    };
+    
+    switch (chart.type) {
+        case 'gauge':
+            plotlyData = [{
+                type: "indicator",
+                mode: "gauge+number+delta",
+                value: parseFloat(data.values[0]) || 0,
+                domain: { x: [0, 1], y: [0, 1] },
+                title: { text: chart.title, font: { size: 16 }},
+                gauge: {
+                    axis: { 
+                        range: [null, data.target || 100],
+                        tickwidth: 1,
+                        tickcolor: "darkblue"
+                    },
+                    bar: { color: "#3498db", thickness: 0.3 },
+                    bgcolor: "white",
+                    borderwidth: 2,
+                    bordercolor: "gray",
+                    steps: [
+                        { range: [0, (data.target || 100) * 0.6], color: "#ffebee" },
+                        { range: [(data.target || 100) * 0.6, (data.target || 100) * 0.8], color: "#fff3e0" },
+                        { range: [(data.target || 100) * 0.8, data.target || 100], color: "#e8f5e8" }
+                    ],
+                    threshold: {
+                        line: { color: "red", width: 4 },
+                        thickness: 0.75,
+                        value: data.target * 0.9 || 90
+                    }
+                }
+            }];
+            layout.height = 400;
+            break;
+            
+        case 'bar':
+            plotlyData = [{
+                x: data.labels || [],
+                y: data.values || [],
+                type: 'bar',
+                marker: { 
+                    color: data.values?.map(v => v > 0 ? '#3498db' : '#e74c3c') || '#3498db',
+                    line: { color: 'white', width: 1 }
+                },
+                hovertemplate: '<b>%{x}</b><br>Value: %{y}<extra></extra>',
+                text: data.values?.map(v => v > 1000 ? `${(v/1000).toFixed(1)}K` : v.toString()) || [],
+                textposition: 'auto',
+            }];
+            layout.xaxis = { title: 'Categories', tickangle: -45 };
+            layout.yaxis = { title: 'Values' };
+            break;
+            
+        case 'line':
+            plotlyData = [{
+                x: data.labels || [],
+                y: data.values || [],
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { 
+                    color: '#3498db', 
+                    width: 3,
+                    shape: 'spline'
+                },
+                marker: { 
+                    size: 8, 
+                    color: '#2c3e50',
+                    line: { color: 'white', width: 2 }
+                },
+                fill: 'tonexty',
+                fillcolor: 'rgba(52,152,219,0.1)',
+                hovertemplate: '<b>%{x}</b><br>Value: %{y}<extra></extra>'
+            }];
+            layout.xaxis = { title: 'Time Period' };
+            layout.yaxis = { title: 'Values' };
+            break;
+            
+        case 'pie':
+            plotlyData = [{
+                values: data.values || [],
+                labels: data.labels || [],
+                type: 'pie',
+                hole: 0.4,
+                marker: {
+                    colors: ['#3498db', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6', '#1abc9c', '#34495e'],
+                    line: { color: 'white', width: 2 }
+                },
+                textinfo: 'label+percent',
+                textposition: 'auto',
+                hovertemplate: '<b>%{label}</b><br>Value: %{value}<br>Percentage: %{percent}<extra></extra>'
+            }];
+            layout.showlegend = true;
+            layout.legend = { orientation: "v", x: 1.02, y: 0.5 };
+            break;
+            
+        case 'metric_card':
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100%; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 12px;">
+                    <div style="text-align: center; padding: 40px;">
+                        <h1 style="color: #3498db; font-size: 4rem; margin: 0; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            ${data.values[0]}
+                        </h1>
+                        <p style="color: #666; font-size: 1.4rem; margin: 15px 0 0 0; font-weight: 500;">
+                            ${data.labels[0] || 'Metric'}
+                        </p>
+                        <div style="width: 100px; height: 4px; background: linear-gradient(90deg, #3498db, #2ecc71); margin: 20px auto; border-radius: 2px;"></div>
+                    </div>
+                </div>
+            `;
+            return;
+            
+        default:
+            plotlyData = [{
+                x: data.labels || [],
+                y: data.values || [],
+                type: 'bar',
+                marker: { color: '#3498db' }
+            }];
+    }
+    
+    Plotly.newPlot(containerId, plotlyData, layout, config);
+}
+
+// Interactive Features
+function highlightKPI(index) {
+    // Add visual feedback for KPI interaction
+    const kpiCards = document.querySelectorAll('.kpi-card');
+    kpiCards.forEach((card, i) => {
+        if (i === index) {
+            card.style.transform = 'translateY(-10px) scale(1.02)';
+            card.style.zIndex = '10';
+        } else {
+            card.style.transform = '';
+            card.style.zIndex = '';
+        }
+    });
+    
+    // Reset after animation
+    setTimeout(() => {
+        kpiCards[index].style.transform = '';
+        kpiCards[index].style.zIndex = '';
+    }, 2000);
+}
+
+function addChatMessage(content, isUser) {
+    const wrapper = document.getElementById('chatMessages');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message ' + (isUser ? 'user' : 'bot');
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    
+    msgDiv.innerHTML = `
+        <div class="message-content">
+            <div style="white-space:pre-wrap;">${escapeHTML(content)}</div>
+        </div>
+        <div class="message-time">${timeStr}</div>
+    `;
+    
+    wrapper.appendChild(msgDiv);
+    wrapper.parentElement.scrollTop = wrapper.parentElement.scrollHeight;
+}
+
+function escapeHTML(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+}
+
+function sendQuickVisualMessage(message) {
+    document.getElementById('visualQuery').value = message;
+    document.getElementById('sendVisualBtn').click();
+}
+
+function showSection(sectionId) {
+    ['dashboardContainer', 'loadingSection', 'errorSection', 'chartsSection'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+}
+
+// Enhanced Main Event Handler
+document.getElementById('sendVisualBtn').addEventListener('click', async () => {
+    const query = document.getElementById('visualQuery').value.trim();
+    if (!query) return;
+
+    // Show loading with enhanced message
+    showSection('loadingSection');
+
+    // Add user message to chat
+    addChatMessage(query, true);
+
+    try {
+        const resp = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                message: query,
+                visual: true
+            })
+        });
+        
+        const data = await resp.json();
+        
+        // Check if we have KPI data for interactive dashboard
+        if (data.kpiData && (data.kpiData.kpis || data.kpiData.summary)) {
+            // Create interactive dashboard with enhanced features
+            createInteractiveDashboard(data.kpiData);
+            addChatMessage("Interactive business intelligence dashboard generated! Explore the KPIs and charts above for insights.", false);
+        } else {
+            // Show detailed error with suggestions
+            showSection('errorSection');
+            document.getElementById('errorText').innerHTML = `
+                Unable to generate interactive dashboard from this query. 
+                <br><br>
+                <strong>Try asking about:</strong>
+                <ul style="text-align: left; margin-top: 10px;">
+                    <li>Inventory trends and performance metrics</li>
+                    <li>Purchase patterns and supplier analytics</li>
+                    <li>Financial performance and cost analysis</li>
+                    <li>Operational efficiency and productivity</li>
+                </ul>
+            `;
+            addChatMessage("Could not generate interactive dashboard. Please try a business-focused query about trends, performance, or analytics.", false);
+        }
+        
+        // Clear input
+        document.getElementById('visualQuery').value = '';
+        
+    } catch (e) {
+        console.error('Error fetching chat response', e);
+        showSection('errorSection');
+        document.getElementById('errorText').textContent = 
+            "Connection error. Please check your network and try again.";
+        addChatMessage("System error occurred. Please try again.", false);
+    }
+});
+
+// Handle Enter key
+document.getElementById('visualQuery').addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById('sendVisualBtn').click();
+    }
+});
+
+// Add chart interaction handlers
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize any default interactions
+    console.log('Interactive Business Intelligence Dashboard initialized');
+});
+</script>
+{% endblock %}

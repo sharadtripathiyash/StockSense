@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}QAD Assistant{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --light-bg: #f8f9fa;
+            --dark-bg: #343a40;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-bg);
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: var(--primary-color) !important;
+        }
+        
+        .sidebar {
+            height: calc(100vh - 76px);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px 0;
+        }
+        
+        .sidebar a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            padding: 15px 25px;
+            display: block;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .sidebar a:hover, .sidebar a.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            border-left-color: white;
+        }
+        
+        .main-content {
+            min-height: calc(100vh - 76px);
+            padding: 30px;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-cogs me-2"></i>QAD ERP Assistant
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/"><i class="fas fa-comments me-1"></i>Chat</a>
+                <a class="nav-link" href="/analytics"><i class="fas fa-chart-bar me-1"></i>Analytics</a>
+                <a class="nav-link" href="/visual_chat"><i class="fas fa-chart-pie me-1"></i>Visual Chat</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-2 sidebar">
+                <div class="sidebar-content">
+                    <a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">
+                        <i class="fas fa-comments me-2"></i>Chat Assistant
+                    </a>
+                    <a href="/analytics" class="{% if request.endpoint == 'analytics' %}active{% endif %}">
+                        <i class="fas fa-chart-bar me-2"></i>Analytics
+                    </a>
+                    <hr class="my-3" style="border-color: rgba(255,255,255,0.3);">
+                    <div class="px-3 py-2">
+                        <small class="text-white-50">Quick Actions</small>
+                    </div>
+                    <a href="#" onclick="clearChat()">
+                        <i class="fas fa-trash me-2"></i>Clear Chat
+                    </a>
+                    <a href="#" onclick="exportData()">
+                        <i class="fas fa-download me-2"></i>Export Data
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-10 main-content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function clearChat() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
+                try {
+                    // Clear chat in database first
+                    const response = await fetch('/api/chat/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to clear chat history');
+                    }
+
+                    // Clear messages from UI
+                    const chatMessages = document.getElementById('chatMessages');
+                    if (chatMessages) {
+                        const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
+                        
+                        // Clear all messages and reset to welcome message
+                        messagesWrapper.innerHTML = `
+                            <div class="message bot">
+                                <div class="message-content">
+                                    <div>Hello! I'm your QAD ERP assistant. I can help you with:</div>
+                                    <ul class="mt-2 mb-0">
+                                        <li>Inventory queries and low stock alerts</li>
+                                        <li>Purchase requisition creation</li>
+                                        <li>Database reports and analytics</li>
+                                        <li>General ERP system queries</li>
+                                    </ul>
+                                    <div>How can I assist you today?</div>
+                                </div>
+                                <div class="message-time">Just now</div>
+                            </div>
+                        `;
+
+                        // Clear and reset chat history
+                        chatHistory = [];
+                        localStorage.removeItem('chatHistory');
+                        
+                        // Ensure input is enabled and focused
+                        const userInput = document.getElementById('userInput');
+                        if (userInput) {
+                            userInput.disabled = false;
+                            userInput.value = '';
+                            userInput.focus();
+                        }
+                        
+                        // Ensure send button is enabled
+                        const sendButton = document.querySelector('.btn-send');
+                        if (sendButton) {
+                            sendButton.disabled = false;
+                        }
+                        
+                        // Ensure view is at bottom (use global helper if available)
+                        if (window.scrollChatToBottom) {
+                            setTimeout(() => window.scrollChatToBottom({ smooth: false }), 20);
+                        }
+                    }
+                    
+                    console.log('Chat cleared successfully');
+                    
+                } catch (error) {
+                    console.error('Error clearing chat:', error);
+                    alert('Failed to clear chat history. Please try again.');
+                }
+            }
+        }
+
+        function exportData() {
+            window.open('/api/analytics/export', '_blank');
+        }
+    </script>
+
+    <!-- Global helper: robust chat scroll utility -->
+    <script>
+    // Find the best scroll container for chat and scroll it to bottom reliably
+    function _getChatScrollContainer() {
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return null;
+        const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
+        // If messages-wrapper exists and is scrollable (content taller than box), use it
+        if (messagesWrapper && messagesWrapper.scrollHeight > messagesWrapper.clientHeight) {
+            return messagesWrapper;
+        }
+        // Otherwise use outer chat container
+        return chatMessages;
+    }
+
+    // options: { smooth: boolean }
+    function scrollChatToBottom(options = {}) {
+        const el = _getChatScrollContainer();
+        if (!el) return;
+        const smooth = !!options.smooth;
+        // double rAF to wait for layout/render of large text insertions
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                try {
+                    if (smooth && el.scrollTo) {
+                        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                    } else {
+                        el.scrollTop = el.scrollHeight;
+                    }
+                } catch (e) {
+                    try { el.scrollTop = el.scrollHeight; } catch (_) {}
+                }
+            });
+        });
+    }
+
+    // Expose globally
+    window.scrollChatToBottom = scrollChatToBottom;
+    </script>
+
+    <script>
+    // Fixed table rendering - reorder columns to put 'no' first if it exists
+    function renderTable(container, rows) {
+        container.innerHTML = '';
+        if (!rows || !Array.isArray(rows) || rows.length === 0) {
+            container.textContent = 'No table data.';
+            return;
+        }
+        
+        // Add record count display
+        const recordCountDiv = document.createElement('div');
+        recordCountDiv.className = 'record-count';
+        recordCountDiv.textContent = `Number of records: ${rows.length}`;
+        recordCountDiv.style.cssText = `
+            text-align: left;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--primary-color);
+            padding: 5px 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            display: inline-block;
+        `;
+        container.appendChild(recordCountDiv);
+        
+        // Get all columns
+        const allColumns = Array.from(rows.reduce((set, row) => {
+            Object.keys(row || {}).forEach(k => set.add(k));
+            return set;
+        }, new Set()));
+        
+        // Reorder columns to put 'no' or '#' first if it exists
+        let columns = [];
+        const numberColumns = ['no', '#', 'num', 'number'];
+        const numberCol = allColumns.find(col => numberColumns.includes(col.toLowerCase()));
+        
+        if (numberCol) {
+            columns.push(numberCol);
+            columns.push(...allColumns.filter(col => col !== numberCol));
+        } else {
+            columns = allColumns;
+        }
+        
+        const table = document.createElement('table');
+        table.style.cssText = `
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            direction: ltr;
+        `;
+        
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        
+        // Add headers in the correct order
+        columns.forEach((col, index) => {
+            const th = document.createElement('th');
+            // Display '#' for the number column header
+            th.textContent = (index === 0 && numberCol && col === numberCol) ? '#' : col;
+            th.style.cssText = `
+                border: 1px solid #dee2e6;
+                padding: 8px;
+                text-align: left;
+                background-color: var(--light-bg);
+                font-weight: 600;
+                ${index === 0 && numberCol ? 'width: 50px;' : ''}
+            `;
+            trh.appendChild(th);
+        });
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        rows.forEach(r => {
+            const tr = document.createElement('tr');
+            
+            // Add data cells in the correct order
+            columns.forEach((col, index) => {
+                const td = document.createElement('td');
+                let val = r && r[col] != null ? r[col] : '';
+                td.textContent = String(val);
+                
+                // Check if value is negative and apply red color
+                const numericValue = parseFloat(val);
+                let cellStyle = `
+                    border: 1px solid #dee2e6;
+                    padding: 8px;
+                    text-align: left;
+                `;
+                
+                if (!isNaN(numericValue) && numericValue < 0) {
+                    cellStyle += 'color: #dc3545; font-weight: 600;';
+                }
+                
+                // Special styling for the number column
+                if (index === 0 && numberCol && col === numberCol) {
+                    cellStyle += 'font-weight: 500; background-color: #f8f9fa;';
+                }
+                
+                td.style.cssText = cellStyle;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'table-wrap';
+        wrap.appendChild(table);
+        container.appendChild(wrap);
+    }
+    
+    // Append a chat row
+    function appendChat(container, text, isUser) {
+        const row = document.createElement('div');
+        row.className = 'chat-row';
+        const bubble = document.createElement('div');
+        bubble.className = isUser ? 'chat-user' : 'chat-bot';
+        bubble.textContent = text;
+        row.appendChild(bubble);
+        container.appendChild(row);
+        container.scrollTop = container.scrollHeight;
+    }
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,10 @@
+Flask
+SQLAlchemy
+Flask-SQLAlchemy
+requests
+plotly
+pandas
+python-dateutil
+Werkzeug
+google-generativeai
+python-dotenv
