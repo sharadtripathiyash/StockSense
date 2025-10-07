@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Chat - StockSense{% endblock %}
-{% block page_title %}Chat{% endblock %}
+{% block page_title %}StockSense{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -22,7 +22,7 @@
     display: flex;
     flex-direction: column;
     background: #ffffff;
-    border-radius: 16px 1px;
+    border-radius: 16px 16px 1px 1px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
     
@@ -93,6 +93,26 @@
         color: #1f2937;
         border: 1px solid #e5e7eb;
     }
+
+    /* Explanation section styling */
+    .explanation-section {
+        background: #f9fafb;
+        border-left: 4px solid #3498db;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+
+    .explanation-section p {
+        margin: 0 0 12px 0;
+        color: #374151;
+    }
+
+    .explanation-section p:last-child {
+        margin-bottom: 0;
+    }
     
     .message-time {
         font-size: 0.75rem;
@@ -108,12 +128,14 @@
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         max-width: fit-content;
+        flex-direction: row !important;
     }
     
     .typing-indicator.show {
         display: flex !important;
         gap: 6px;
         align-items: center;
+        flex-direction: row !important;
     }
     
     .typing-dot {
@@ -182,25 +204,28 @@
     }
     
     .send-button {
-        position: absolute;
-        right: 8px;
-        bottom: 8px;
-        background: #10a37f;
-        color: white;
-        border: none;
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .send-button:hover:not(:disabled) {
-        background: #0e8c6f;
-    }
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    background: #34495e;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    color: black;
+    padding-bottom: 10px;
+}
+
+.send-button:hover:not(:disabled) {
+    background: #f7f7f8;
+}
     
     .send-button:disabled {
         background: #d1d5db;
@@ -438,8 +463,8 @@
                 onkeydown="handleKeyDown(event)"
                 oninput="autoResize(this)"></textarea>
             <button class="send-button" onclick="sendMessage()" id="sendBtn">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+            <i class="fas fa-arrow-up"></i>
+          </button>
         </div>
     </div>
 </div>
@@ -465,7 +490,7 @@ function autoResize(textarea) {
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
 }
 
-function displayMessage(content, isUser = false, tableData = null) {
+function displayMessage(content, isUser = false, tableData = null, explanation = null) {
     const chatMessages = document.getElementById('chatMessages');
     const messagesWrapper = chatMessages.querySelector('.messages-wrapper');
     const messageDiv = document.createElement('div');
@@ -542,6 +567,19 @@ function displayMessage(content, isUser = false, tableData = null) {
             safeContentRaw = tempDiv.innerHTML;
         }
 
+        // Build explanation section if provided
+        let explanationHTML = '';
+        if (explanation && (explanation.basis || explanation.benefit)) {
+            explanationHTML = '<div class="explanation-section">';
+            if (explanation.basis) {
+                explanationHTML += `<p>${escapeHTML(explanation.basis)}</p>`;
+            }
+            if (explanation.benefit) {
+                explanationHTML += `<p>${escapeHTML(explanation.benefit)}</p>`;
+            }
+            explanationHTML += '</div>';
+        }
+
         const safeContent = isHtmlContent ? safeContentRaw : (safeContentRaw ? '<div style="white-space: pre-wrap;">' + escapeHTML(safeContentRaw) + '</div>' : '');
 
         const actionsHtml = `
@@ -562,22 +600,51 @@ function displayMessage(content, isUser = false, tableData = null) {
 
         messageDiv.innerHTML = `
             <div class="message-content" dir="ltr">
+                ${explanationHTML}
                 ${safeContent}
                 ${actionsHtml}
             </div>
             <div class="message-time">${timeString}</div>
         `;
     } else if (isHtmlContent) {
+        // Build explanation section if provided
+        let explanationHTML = '';
+        if (explanation && (explanation.basis || explanation.benefit)) {
+            explanationHTML = '<div class="explanation-section">';
+            if (explanation.basis) {
+                explanationHTML += `<p>${escapeHTML(explanation.basis)}</p>`;
+            }
+            if (explanation.benefit) {
+                explanationHTML += `<p>${escapeHTML(explanation.benefit)}</p>`;
+            }
+            explanationHTML += '</div>';
+        }
+
         messageDiv.innerHTML = `
             <div class="message-content" dir="ltr">
+                ${explanationHTML}
                 ${content}
             </div>
             <div class="message-time">${timeString}</div>
         `;
     } else {
+        // Build explanation section if provided
+        let explanationHTML = '';
+        if (explanation && (explanation.basis || explanation.benefit)) {
+            explanationHTML = '<div class="explanation-section">';
+            if (explanation.basis) {
+                explanationHTML += `<p>${escapeHTML(explanation.basis)}</p>`;
+            }
+            if (explanation.benefit) {
+                explanationHTML += `<p>${escapeHTML(explanation.benefit)}</p>`;
+            }
+            explanationHTML += '</div>';
+        }
+
         const safeText = escapeHTML(content);
         messageDiv.innerHTML = `
             <div class="message-content">
+                ${explanationHTML}
                 <div style="white-space: pre-wrap;">${safeText}</div>
             </div>
             <div class="message-time">${timeString}</div>
@@ -724,13 +791,15 @@ async function sendMessage() {
         if (data.error) {
             displayMessage('Sorry, I encountered an error. Please try again.', false);
         } else {
-            let combinedContent = data.response || '';
+            let combinedContent = data.response || data.chatMessage || '';
+            let explanation = data.explanation || null;
+
             if (Array.isArray(data.tableData) && data.tableData.length > 0) {
                 const temp = document.createElement('div');
                 if (typeof renderTable === 'function') {
                     renderTable(temp, data.tableData);
                     const tableHtml = temp.innerHTML;
-                    const safeResponse = '<div style="margin-top:8px; white-space: pre-wrap;">' + escapeHTML(data.response || '') + '</div>';
+                    const safeResponse = '<div style="margin-top:8px; white-space: pre-wrap;">' + escapeHTML(combinedContent) + '</div>';
                     combinedContent = tableHtml + safeResponse;
                 } else {
                     let cols = [];
@@ -747,13 +816,13 @@ async function sendMessage() {
                         }).join('') + '</tr>';
                     });
                     htmlTable += '</tbody></table></div>';
-                    const safeResponse = '<div style="margin-top:8px; white-space: pre-wrap;">' + escapeHTML(data.response || '') + '</div>';
+                    const safeResponse = '<div style="margin-top:8px; white-space: pre-wrap;">' + escapeHTML(combinedContent) + '</div>';
                     combinedContent = htmlTable + safeResponse;
                 }
                 
-                displayMessage(combinedContent, false, data.tableData);
+                displayMessage(combinedContent, false, data.tableData, explanation);
             } else {
-                displayMessage(data.response || '', false);
+                displayMessage(combinedContent, false, null, explanation);
             }
         }
         
