@@ -31,7 +31,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
 # PRODUCTION CHANGE: Use environment variables for configuration
-WEBHOOK_URL = os.environ.get('WEBHOOK_URL', "http://localhost:5678/webhook/1381ce10-c93f-4d4f-a56a-b8755e2877ca")
+WEBHOOK_URL = os.environ.get('WEBHOOK_URL', "http://10.209.1.9:5678/webhook/1381ce10-c93f-4d4f-a56a-b8755e2877ca")
 DATABASE_PATH = os.environ.get('DATABASE_PATH', '/qond/qad-assistant/chat_analytics.db')
 
 # PRODUCTION CHANGE: Ensure database directory exists
@@ -203,19 +203,28 @@ def chat():
 
         normalized_table = []
         normalized_message = ''
+        explanation = None
 
         if response.status_code == 200:
             try:
                 data = response.json()
+                
+                # Handle the response structure
                 if isinstance(data, dict):
                     normalized_table = data.get('tableData', []) or []
                     normalized_message = data.get('chatMessage', '') or data.get('message', '') or data.get('response', '') or ''
+                    explanation = data.get('explanation', None)
+                    
                 elif isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                    # Handle array response format
                     first = data[0]
                     normalized_table = first.get('tableData', []) or []
                     normalized_message = first.get('chatMessage', '') or first.get('message', '') or first.get('response', '') or ''
+                    explanation = first.get('explanation', None)
+                    
                 else:
                     normalized_message = json.dumps(data, ensure_ascii=False)
+                    
             except Exception as e:
                 print(f"Error parsing JSON response: {e}")
                 normalized_message = response.text or ''
@@ -243,6 +252,10 @@ def chat():
             'chatMessage': bot_response,
             'session_id': session_id
         }
+
+        # Add explanation if present
+        if explanation:
+            response_data['explanation'] = explanation
 
         if kpi_data:
             response_data['kpiData'] = kpi_data
