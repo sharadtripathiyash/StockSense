@@ -15,7 +15,7 @@ class InteractiveKPIProcessor:
     def __init__(self, api_key: str):
         """Initialize Gemini KPI processor for interactive trends and decision support"""
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("models/gemini-1.5-flash-latest")
+        self.model = genai.GenerativeModel("gemini-2.5-flash")
     
     def extract_interactive_insights(self, bot_response: str, table_data: List[Dict] = None) -> Dict[str, Any]:
         """
