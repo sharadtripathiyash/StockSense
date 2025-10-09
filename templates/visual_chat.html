@@ -538,6 +538,7 @@ document.getElementById('sendVisualBtn').addEventListener('click', async () => {
     const query = document.getElementById('visualQuery').value.trim();
     if (!query) return;
 
+    // Show loading state
     showSection('loadingSection');
 
     try {
@@ -550,6 +551,10 @@ document.getElementById('sendVisualBtn').addEventListener('click', async () => {
         const data = await resp.json();
         
         if (data.kpiData && (data.kpiData.kpis || data.kpiData.summary)) {
+            // Hide loading section first
+            document.getElementById('loadingSection').style.display = 'none';
+            
+            // Then create the dashboard
             createInteractiveDashboard(data.kpiData);
         } else {
             showSection('errorSection');
