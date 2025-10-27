@@ -203,6 +203,89 @@
         box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.1);
     }
     
+    /* Autocomplete Suggestions Dropdown */
+    .autocomplete-dropdown {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 0;
+        right: 90px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+        max-height: 280px;
+        overflow-y: auto;
+        display: none;
+        z-index: 1000;
+    }
+    
+    .autocomplete-dropdown.show {
+        display: block;
+    }
+    
+    .autocomplete-dropdown::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .autocomplete-dropdown::-webkit-scrollbar-track {
+        background: #f7f7f8;
+        border-radius: 0 12px 12px 0;
+    }
+    
+    .autocomplete-dropdown::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 4px;
+    }
+    
+    .suggestion-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-bottom: 1px solid #f3f4f6;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95rem;
+    }
+    
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    .suggestion-item:hover,
+    .suggestion-item.selected {
+        background: #f9fafb;
+    }
+    
+    .suggestion-item.selected {
+        background: #f3f4f6;
+    }
+    
+    .suggestion-icon {
+        color: #9ca3af;
+        font-size: 0.9rem;
+        width: 20px;
+        text-align: center;
+    }
+    
+    .suggestion-text {
+        flex: 1;
+        color: #374151;
+    }
+    
+    .suggestion-highlight {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .suggestion-category {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        padding: 2px 8px;
+        background: #f3f4f6;
+        border-radius: 10px;
+    }
+    
     .input-controls {
         position: absolute;
         right: 8px;
@@ -572,12 +655,16 @@
     <!-- Input Area -->
     <div class="input-area">
         <div class="input-wrapper">
+            <!-- Autocomplete Dropdown -->
+            <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+            
             <textarea 
                 id="userInput" 
                 class="chat-input" 
                 placeholder="Message StockSense or use voice input..." 
                 rows="1"
-                oninput="autoResize(this)"></textarea>
+                oninput="autoResize(this); handleAutocomplete(this);"
+                onkeydown="handleSuggestionNavigation(event)"></textarea>
             <div class="input-controls">
                 <button class="voice-button" onclick="toggleVoiceInput()" id="voiceBtn" title="Voice input">
                     <i class="fas fa-microphone"></i>
@@ -599,6 +686,294 @@ let lastItemsData = null;
 // Voice recognition variables
 let recognition = null;
 let isRecording = false;
+
+// Autocomplete variables
+let currentSuggestionIndex = -1;
+let currentSuggestions = [];
+
+// Comprehensive suggestion database for ERP/Inventory system
+const suggestionDatabase = {
+    'show': [
+        'show me low inventory items',
+        'show me items to reorder',
+        'show inventory report',
+        'show supplier information',
+        'show purchase orders',
+        'show me critical stock items',
+        'show me all products',
+        'show me stock levels',
+        'show me items below reorder point',
+        'show me overstock items',
+        'show me expired items',
+        'show me items by category',
+        'show me warehouse status',
+        'show me pending orders',
+        'show me supplier performance'
+    ],
+    'what': [
+        'what should I order?',
+        'what items are low in stock?',
+        'what is the current inventory value?',
+        'what products need reordering?',
+        'what are the top selling items?',
+        'what is the lead time for orders?',
+        'what suppliers are available?',
+        'what is the reorder point?',
+        'what items are critical?',
+        'what is the stock turnover rate?'
+    ],
+    'how': [
+        'how many items are in stock?',
+        'how much inventory do we have?',
+        'how to create a purchase order?',
+        'how many suppliers do we have?',
+        'how much safety stock do we need?',
+        'how to calculate reorder point?',
+        'how long is the lead time?',
+        'how to manage stock levels?'
+    ],
+    'list': [
+        'list all products',
+        'list low stock items',
+        'list suppliers',
+        'list purchase orders',
+        'list items by category',
+        'list critical items',
+        'list items to reorder',
+        'list overstock items',
+        'list pending requisitions'
+    ],
+    'create': [
+        'create purchase requisition',
+        'create purchase order',
+        'create inventory report',
+        'create stock alert',
+        'create supplier evaluation',
+        'create reorder list'
+    ],
+    'find': [
+        'find low stock items',
+        'find suppliers for product',
+        'find best price',
+        'find items to order',
+        'find critical stock levels',
+        'find overstock items',
+        'find expired products'
+    ],
+    'check': [
+        'check inventory levels',
+        'check stock status',
+        'check reorder points',
+        'check supplier availability',
+        'check order status',
+        'check item availability',
+        'check warehouse capacity'
+    ],
+    'analyze': [
+        'analyze inventory turnover',
+        'analyze stock movement',
+        'analyze supplier performance',
+        'analyze purchase trends',
+        'analyze inventory costs',
+        'analyze demand patterns'
+    ],
+    'get': [
+        'get inventory report',
+        'get stock levels',
+        'get supplier list',
+        'get purchase history',
+        'get reorder suggestions',
+        'get inventory valuation'
+    ],
+    'calculate': [
+        'calculate reorder point',
+        'calculate safety stock',
+        'calculate economic order quantity',
+        'calculate inventory turnover',
+        'calculate holding costs'
+    ]
+};
+
+// Function to get suggestions based on input
+function getSuggestions(input) {
+    if (!input || input.length < 2) return [];
+    
+    const inputLower = input.toLowerCase().trim();
+    const words = inputLower.split(' ');
+    const firstWord = words[0];
+    
+    let suggestions = [];
+    
+    // Check if the first word matches any category
+    if (suggestionDatabase[firstWord]) {
+        // Filter suggestions from that category
+        suggestions = suggestionDatabase[firstWord].filter(suggestion => 
+            suggestion.toLowerCase().startsWith(inputLower)
+        );
+    }
+    
+    // If no category match or no suggestions, search all suggestions
+    if (suggestions.length === 0) {
+        for (const category in suggestionDatabase) {
+            const categorySuggestions = suggestionDatabase[category].filter(suggestion =>
+                suggestion.toLowerCase().includes(inputLower)
+            );
+            suggestions = suggestions.concat(categorySuggestions);
+        }
+    }
+    
+    // Remove duplicates and limit to 8 suggestions
+    suggestions = [...new Set(suggestions)].slice(0, 8);
+    
+    // Add icons and categories to suggestions
+    return suggestions.map(text => {
+        let icon = 'fas fa-search';
+        let category = 'Query';
+        
+        if (text.includes('low') || text.includes('reorder') || text.includes('critical')) {
+            icon = 'fas fa-exclamation-triangle';
+            category = 'Alert';
+        } else if (text.includes('supplier')) {
+            icon = 'fas fa-truck';
+            category = 'Supplier';
+        } else if (text.includes('report') || text.includes('analyze')) {
+            icon = 'fas fa-chart-bar';
+            category = 'Analytics';
+        } else if (text.includes('create') || text.includes('requisition')) {
+            icon = 'fas fa-plus-circle';
+            category = 'Action';
+        } else if (text.includes('inventory') || text.includes('stock')) {
+            icon = 'fas fa-boxes';
+            category = 'Inventory';
+        } else if (text.includes('order')) {
+            icon = 'fas fa-shopping-cart';
+            category = 'Order';
+        }
+        
+        return { text, icon, category };
+    });
+}
+
+// Function to handle autocomplete
+function handleAutocomplete(input) {
+    const value = input.value.trim();
+    const dropdown = document.getElementById('autocompleteDropdown');
+    
+    if (!value || value.length < 2) {
+        dropdown.classList.remove('show');
+        dropdown.innerHTML = '';
+        currentSuggestions = [];
+        currentSuggestionIndex = -1;
+        return;
+    }
+    
+    currentSuggestions = getSuggestions(value);
+    currentSuggestionIndex = -1;
+    
+    if (currentSuggestions.length === 0) {
+        dropdown.classList.remove('show');
+        dropdown.innerHTML = '';
+        return;
+    }
+    
+    // Build suggestion HTML
+    let html = '';
+    currentSuggestions.forEach((suggestion, index) => {
+        // Highlight matching part
+        const inputLower = value.toLowerCase();
+        const suggestionLower = suggestion.text.toLowerCase();
+        const matchIndex = suggestionLower.indexOf(inputLower);
+        
+        let highlightedText = suggestion.text;
+        if (matchIndex >= 0) {
+            const before = suggestion.text.substring(0, matchIndex);
+            const match = suggestion.text.substring(matchIndex, matchIndex + value.length);
+            const after = suggestion.text.substring(matchIndex + value.length);
+            highlightedText = `${before}<span class="suggestion-highlight">${match}</span>${after}`;
+        }
+        
+        html += `
+            <div class="suggestion-item" data-index="${index}" onclick="selectSuggestion(${index})">
+                <i class="${suggestion.icon} suggestion-icon"></i>
+                <span class="suggestion-text">${highlightedText}</span>
+                <span class="suggestion-category">${suggestion.category}</span>
+            </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.classList.add('show');
+}
+
+// Function to select a suggestion
+function selectSuggestion(index) {
+    if (index >= 0 && index < currentSuggestions.length) {
+        const input = document.getElementById('userInput');
+        input.value = currentSuggestions[index].text;
+        autoResize(input);
+        
+        const dropdown = document.getElementById('autocompleteDropdown');
+        dropdown.classList.remove('show');
+        dropdown.innerHTML = '';
+        currentSuggestions = [];
+        currentSuggestionIndex = -1;
+        
+        // Focus back to input
+        input.focus();
+    }
+}
+
+// Function to handle keyboard navigation for suggestions
+function handleSuggestionNavigation(event) {
+    const dropdown = document.getElementById('autocompleteDropdown');
+    if (!dropdown.classList.contains('show') || currentSuggestions.length === 0) {
+        return;
+    }
+    
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, currentSuggestions.length - 1);
+        updateSuggestionHighlight();
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+        updateSuggestionHighlight();
+    } else if (event.key === 'Tab' && currentSuggestionIndex >= 0) {
+        event.preventDefault();
+        selectSuggestion(currentSuggestionIndex);
+    } else if (event.key === 'Escape') {
+        dropdown.classList.remove('show');
+        dropdown.innerHTML = '';
+        currentSuggestions = [];
+        currentSuggestionIndex = -1;
+    }
+}
+
+// Function to update visual highlight for keyboard navigation
+function updateSuggestionHighlight() {
+    const items = document.querySelectorAll('.suggestion-item');
+    items.forEach((item, index) => {
+        if (index === currentSuggestionIndex) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+// Close autocomplete when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('autocompleteDropdown');
+    const input = document.getElementById('userInput');
+    const wrapper = document.querySelector('.input-wrapper');
+    
+    if (dropdown && !wrapper.contains(event.target)) {
+        dropdown.classList.remove('show');
+        dropdown.innerHTML = '';
+        currentSuggestions = [];
+        currentSuggestionIndex = -1;
+    }
+});
 
 // Initialize voice recognition
 function initVoiceRecognition() {
@@ -1075,6 +1450,14 @@ window.addEventListener('load', function() {
         // Add Enter key event listener to textarea
         userInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
+                // Check if autocomplete is active and a suggestion is selected
+                const dropdown = document.getElementById('autocompleteDropdown');
+                if (dropdown && dropdown.classList.contains('show') && currentSuggestionIndex >= 0) {
+                    event.preventDefault();
+                    selectSuggestion(currentSuggestionIndex);
+                    return;
+                }
+                
                 event.preventDefault();
                 
                 // Stop voice recording if active
